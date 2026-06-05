@@ -5,24 +5,25 @@ import os
 import unicodedata
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
-from moviepy import ImageClip, concatenate_videoclips, CompositeVideoClip
+from moviepy import VideoClip, concatenate_videoclips
 
-IMAGE_DIR = "/home/user/kakanonoyaya/images"
+IMAGE_DIR  = "/home/user/kakanonoyaya/images"
+OUTPUT     = "/home/user/kakanonoyaya/kasuga_dining.mp4"
+W, H       = 1920, 1080
+FPS        = 30
+DURATION   = 6.0
+FADE       = 0.8
 
-# ファイル名正規化マップ (NFD対応)
-_file_map = {unicodedata.normalize("NFC", f): f
-             for f in os.listdir(IMAGE_DIR)}
+FONT_MAIN = "/usr/share/fonts/truetype/fonts-japanese-gothic.ttf"
+FONT_SUB  = "/usr/share/fonts/truetype/fonts-japanese-gothic.ttf"
+
+# ファイル名 NFD→NFC 解決マップ
+_file_map = {unicodedata.normalize("NFC", f): f for f in os.listdir(IMAGE_DIR)}
 
 def resolve(name: str) -> str:
     nfc = unicodedata.normalize("NFC", name)
     return os.path.join(IMAGE_DIR, _file_map.get(nfc, name))
-OUTPUT    = "/home/user/kakanonoyaya/kasuga_dining.mp4"
-W, H      = 1920, 1080   # 出力解像度 (16:9)
-FPS       = 30
-DURATION  = 5.0          # 1枚あたり表示秒数
-FADE      = 0.8          # クロスフェード秒数
 
-# 表示順とテロップ
 SLIDES = [
     {
         "file": "イメージ_モーニング集合0001.jpg",
@@ -72,91 +73,95 @@ SLIDES = [
 ]
 
 
-def fit_image(path: str, w: int, h: int) -> np.ndarray:
-    """アスペクト比を保ちながら全面フィット (黒帯なし・中央クロップ)"""
+def fit_letterbox(path: str, w: int, h: int) -> np.ndarray:
+    """
+    アスペクト比を保ち全体を表示 (黒帯レターボックス)。
+    画像は一切切り取らない。
+    """
     img = Image.open(path).convert("RGB")
     iw, ih = img.size
-    scale = max(w / iw, h / ih)
+    scale = min(w / iw, h / ih)
     nw, nh = int(iw * scale), int(ih * scale)
     img = img.resize((nw, nh), Image.LANCZOS)
-    left = (nw - w) // 2
-    top  = (nh - h) // 2
-    img = img.crop((left, top, left + w, top + h))
-    return np.array(img)
+
+    canvas = Image.new("RGB", (w, h), (0, 0, 0))
+    ox = (w - nw) // 2
+    oy = (h - nh) // 2
+    canvas.paste(img, (ox, oy))
+    return np.array(canvas)
 
 
-def make_text_overlay(text: str, sub: str, w: int, h: int, t: float, total: float) -> np.ndarray:
-    """テロップ画像 (RGBA) を生成"""
+def make_text_layer(text: str, sub: str, w: int, h: int, t: float, total: float) -> np.ndarray:
+    """RGBA テロップレイヤーを生成"""
     canvas = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     draw = ImageDraw.Draw(canvas)
 
-    # フォント
     try:
-        font_main = ImageFont.truetype("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc", 62)
-        font_sub  = ImageFont.truetype("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc", 32)
+        font_main = ImageFont.truetype(FONT_MAIN, 68)
+        font_sub  = ImageFont.truetype(FONT_SUB,  34)
     except Exception:
         font_main = ImageFont.load_default()
         font_sub  = font_main
 
-    # フェード計算
-    fade_in  = min(t / 1.0, 1.0)
+    # フェードイン / アウト
+    fade_in  = min(t / 1.2, 1.0)
     fade_out = min((total - t) / 1.0, 1.0)
     alpha    = int(255 * min(fade_in, fade_out))
 
-    # グラデーション帯（下部）
-    bar_h = int(h * 0.38)
-    for y in range(bar_h):
-        a = int(alpha * (1 - y / bar_h) * 0.65)
-        draw.rectangle([(0, h - bar_h + y), (w, h - bar_h + y)],
-                        fill=(0, 0, 0, a))
+    lines     = text.split("\n")
+    line_h    = 82
+    n_lines   = len(lines)
+    sub_gap   = 16
+    sub_h     = 44
+    block_h   = n_lines * line_h + sub_gap + sub_h
+    margin_b  = 60
+    start_y   = h - block_h - margin_b
 
-    # メインテロップ（中央下寄り）
-    lines = text.split("\n")
-    line_h = 72
-    start_y = h - bar_h + 28
+    # 半透明グラデーション帯
+    grad_top = start_y - 30
+    band_h   = h - grad_top
+    for dy in range(band_h):
+        ratio = dy / band_h
+        a = int(alpha * min(ratio * 2, 1.0) * 0.70)
+        draw.rectangle([(0, grad_top + dy), (w, grad_top + dy)], fill=(0, 0, 0, a))
+
+    # メインテロップ
     for i, line in enumerate(lines):
         bbox = draw.textbbox((0, 0), line, font=font_main)
-        tw = bbox[2] - bbox[0]
-        x = (w - tw) // 2
-        y = start_y + i * line_h
+        tw   = bbox[2] - bbox[0]
+        x    = (w - tw) // 2
+        y    = start_y + i * line_h
         # 影
-        draw.text((x+2, y+2), line, font=font_main, fill=(0, 0, 0, alpha))
-        draw.text((x, y), line, font=font_main, fill=(255, 248, 230, alpha))
+        draw.text((x + 2, y + 2), line, font=font_main, fill=(0, 0, 0, alpha))
+        draw.text((x, y),         line, font=font_main, fill=(255, 248, 230, alpha))
 
     # サブテロップ
+    sy   = start_y + n_lines * line_h + sub_gap
     bbox = draw.textbbox((0, 0), sub, font=font_sub)
-    tw = bbox[2] - bbox[0]
-    sx = (w - tw) // 2
-    sy = start_y + len(lines) * line_h + 12
-    draw.text((sx+1, sy+1), sub, font=font_sub, fill=(0, 0, 0, alpha))
-    draw.text((sx, sy), sub, font=font_sub, fill=(200, 230, 210, alpha))
+    tw   = bbox[2] - bbox[0]
+    sx   = (w - tw) // 2
+    draw.text((sx + 1, sy + 1), sub, font=font_sub, fill=(0, 0, 0, alpha))
+    draw.text((sx, sy),         sub, font=font_sub, fill=(200, 235, 210, alpha))
 
     return np.array(canvas)
 
 
-def make_slide(slide: dict) -> CompositeVideoClip:
-    path = resolve(slide["file"])
-    frame = fit_image(path, W, H)
+def make_slide(slide: dict) -> VideoClip:
+    path  = resolve(slide["file"])
+    frame = fit_letterbox(path, W, H).astype(np.float32)
 
-    base = ImageClip(frame, duration=DURATION)
-
-    def overlay_frame(t):
-        ov = make_text_overlay(slide["text"], slide["sub"], W, H, t, DURATION)
-        return ov
-
-    from moviepy import VideoClip
+    text = slide["text"]
+    sub  = slide["sub"]
 
     def make_frame(t):
-        ov = overlay_frame(t)          # RGBA
-        bg = frame.copy()              # RGB
+        ov    = make_text_layer(text, sub, W, H, t, DURATION).astype(np.float32)
         alpha = ov[:, :, 3:4] / 255.0
-        blended = (bg * (1 - alpha) + ov[:, :, :3] * alpha).astype(np.uint8)
-        return blended
+        rgb   = frame * (1 - alpha) + ov[:, :, :3] * alpha
+        return rgb.clip(0, 255).astype(np.uint8)
 
     return VideoClip(make_frame, duration=DURATION)
 
 
-# --- メイン ---
 print("スライドを生成中...")
 clips = [make_slide(s) for s in SLIDES]
 
@@ -166,5 +171,5 @@ video = concatenate_videoclips(clips, method="compose", padding=-FADE)
 print(f"動画を出力中: {OUTPUT}")
 video.write_videofile(OUTPUT, fps=FPS, codec="libx264",
                       audio=False, preset="medium",
-                      ffmpeg_params=["-crf", "20"])
+                      ffmpeg_params=["-crf", "18"])
 print("完了！")
