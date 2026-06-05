@@ -5,14 +5,15 @@ import os
 import unicodedata
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
-from moviepy import VideoClip, concatenate_videoclips
+from moviepy import VideoClip, concatenate_videoclips, AudioFileClip
 
 IMAGE_DIR  = "/home/user/kakanonoyaya/images"
 OUTPUT     = "/home/user/kakanonoyaya/kasuga_dining.mp4"
+MUSIC      = "/root/.claude/uploads/a5d067d5-75b4-465a-8b3d-e2d22af93c00/bb1ab356-Paper_Lantern_Waltz.mp3"
 W, H       = 1920, 1080
 FPS        = 30
-DURATION   = 6.0
-FADE       = 0.8
+DURATION   = 3.5
+FADE       = 0.6
 
 FONT_MAIN = "/usr/share/fonts/truetype/fonts-japanese-gothic.ttf"
 FONT_SUB  = "/usr/share/fonts/truetype/fonts-japanese-gothic.ttf"
@@ -168,8 +169,15 @@ clips = [make_slide(s) for s in SLIDES]
 print("クリップを連結中...")
 video = concatenate_videoclips(clips, method="compose", padding=-FADE)
 
-print(f"動画を出力中: {OUTPUT}")
+print("音楽を合成中...")
+audio = AudioFileClip(MUSIC)
+# 動画尺に合わせて音楽をトリム（または音楽尺に合わせて動画をトリム）
+video_dur = video.duration
+audio = audio.with_end(min(audio.duration, video_dur))
+video = video.with_audio(audio).with_duration(min(video_dur, audio.duration))
+
+print(f"動画を出力中: {OUTPUT}  (尺: {video.duration:.1f}秒)")
 video.write_videofile(OUTPUT, fps=FPS, codec="libx264",
-                      audio=False, preset="medium",
+                      audio_codec="aac", preset="medium",
                       ffmpeg_params=["-crf", "18"])
 print("完了！")
