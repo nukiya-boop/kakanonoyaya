@@ -12,8 +12,8 @@ OUTPUT     = "/home/user/kakanonoyaya/kasuga_dining.mp4"
 MUSIC      = "/root/.claude/uploads/a5d067d5-75b4-465a-8b3d-e2d22af93c00/bb1ab356-Paper_Lantern_Waltz.mp3"
 W, H       = 1920, 1080
 FPS        = 30
-DURATION   = 4.5   # 1枚あたり秒数 (9枚 × 4.5 - 8 × 1.5 = 28.5s ≈ 音楽尺)
-FADE       = 1.5   # クロスフェード秒数（長めでなめらかに）
+DURATION   = 5.8   # 1枚あたり秒数 (9 × 5.8 - 8 × 1.5 = 40.2s)
+FADE       = 1.5   # クロスフェード秒数
 
 FONT_MAIN = "/usr/share/fonts/truetype/fonts-japanese-gothic.ttf"
 FONT_SUB  = "/usr/share/fonts/truetype/fonts-japanese-gothic.ttf"
@@ -190,11 +190,16 @@ print("クリップを連結中...")
 video = crossfade_concat(raw_frames, DURATION, FADE)
 
 print("音楽を合成中...")
-audio = AudioFileClip(MUSIC)
-# 動画尺に合わせて音楽をトリム（または音楽尺に合わせて動画をトリム）
+audio_src = AudioFileClip(MUSIC)
 video_dur = video.duration
-audio = audio.with_end(min(audio.duration, video_dur))
-video = video.with_audio(audio).with_duration(min(video_dur, audio.duration))
+# 音楽が短い場合はループして動画尺に合わせ、末尾2秒でフェードアウト
+if audio_src.duration < video_dur:
+    from moviepy import afx
+    audio = audio_src.with_effects([afx.AudioLoop(duration=video_dur)])
+else:
+    audio = audio_src.with_end(video_dur)
+audio = audio.with_effects([afx.AudioFadeOut(2.0)])
+video = video.with_audio(audio)
 
 print(f"動画を出力中: {OUTPUT}  (尺: {video.duration:.1f}秒)")
 video.write_videofile(OUTPUT, fps=FPS, codec="libx264",
