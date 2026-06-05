@@ -5,15 +5,15 @@ import os
 import unicodedata
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
-from moviepy import VideoClip, concatenate_videoclips, AudioFileClip
+from moviepy import VideoClip, AudioFileClip
 
 IMAGE_DIR  = "/home/user/kakanonoyaya/images"
 OUTPUT     = "/home/user/kakanonoyaya/kasuga_dining.mp4"
 MUSIC      = "/root/.claude/uploads/a5d067d5-75b4-465a-8b3d-e2d22af93c00/bb1ab356-Paper_Lantern_Waltz.mp3"
 W, H       = 1920, 1080
 FPS        = 30
-DURATION   = 3.5
-FADE       = 0.6
+DURATION   = 4.5   # 1枚あたり秒数 (9枚 × 4.5 - 8 × 1.5 = 28.5s ≈ 音楽尺)
+FADE       = 1.5   # クロスフェード秒数（長めでなめらかに）
 
 FONT_MAIN = "/usr/share/fonts/truetype/fonts-japanese-gothic.ttf"
 FONT_SUB  = "/usr/share/fonts/truetype/fonts-japanese-gothic.ttf"
@@ -147,27 +147,47 @@ def make_text_layer(text: str, sub: str, w: int, h: int, t: float, total: float)
     return np.array(canvas)
 
 
-def make_slide(slide: dict) -> VideoClip:
-    path  = resolve(slide["file"])
-    frame = fit_letterbox(path, W, H).astype(np.float32)
 
-    text = slide["text"]
-    sub  = slide["sub"]
+def crossfade_concat(frames_list, dur, fade):
+    """
+    各スライドの静止フレームをクロスフェードで繋ぐ単一 VideoClip を返す。
+    テロップは各スライドの局所時刻で描画する。
+    """
+    n      = len(frames_list)
+    step   = dur - fade                        # スライドの開始間隔
+    total  = step * (n - 1) + dur              # 総尺
 
     def make_frame(t):
-        ov    = make_text_layer(text, sub, W, H, t, DURATION).astype(np.float32)
-        alpha = ov[:, :, 3:4] / 255.0
-        rgb   = frame * (1 - alpha) + ov[:, :, :3] * alpha
-        return rgb.clip(0, 255).astype(np.uint8)
+        # どのスライドが表示中か特定
+        idx   = min(int(t / step), n - 1)
+        local = t - idx * step                 # スライド内の局所時刻
 
-    return VideoClip(make_frame, duration=DURATION)
+        base  = frames_list[idx]["frame"].copy()
+        slide = frames_list[idx]["slide"]
+        ov    = make_text_layer(slide["text"], slide["sub"], W, H, local, dur).astype(np.float32)
+        a     = ov[:, :, 3:4] / 255.0
+        result = base * (1 - a) + ov[:, :, :3] * a
+
+        # クロスフェード：前のスライドからフェードイン
+        if idx > 0 and local < fade:
+            alpha_fade = local / fade          # 0→1
+            prev_frame = frames_list[idx - 1]["frame"]
+            result = prev_frame * (1 - alpha_fade) + result * alpha_fade
+
+        return result.clip(0, 255).astype(np.uint8)
+
+    return VideoClip(make_frame, duration=total)
 
 
 print("スライドを生成中...")
-clips = [make_slide(s) for s in SLIDES]
+raw_frames = []
+for s in SLIDES:
+    path  = resolve(s["file"])
+    frame = fit_letterbox(path, W, H).astype(np.float32)
+    raw_frames.append({"frame": frame, "slide": s})
 
 print("クリップを連結中...")
-video = concatenate_videoclips(clips, method="compose", padding=-FADE)
+video = crossfade_concat(raw_frames, DURATION, FADE)
 
 print("音楽を合成中...")
 audio = AudioFileClip(MUSIC)
