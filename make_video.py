@@ -92,10 +92,36 @@ def fit_letterbox(path: str, w: int, h: int) -> np.ndarray:
     return np.array(canvas)
 
 
+def ease_in_out(x: float) -> float:
+    """cubic ease-in-out: 0→1 を滑らかに"""
+    x = max(0.0, min(1.0, x))
+    return 3 * x * x - 2 * x * x * x
+
+
 def make_text_layer(text: str, sub: str, w: int, h: int, t: float, total: float) -> np.ndarray:
-    """RGBA テロップレイヤーを生成"""
+    """
+    RGBA テロップレイヤーを生成。
+    フェードイン: 下から浮き上がりながら出現（ease-in-out）
+    フェードアウト: 上へ静かに流れながら消える（ease-in-out）
+    """
+    FI = 1.2   # フェードイン秒
+    FO = 1.0   # フェードアウト秒
+    DRIFT = 28 # 移動ピクセル数
+
+    if t < FI:
+        prog   = ease_in_out(t / FI)
+        alpha  = int(255 * prog)
+        drift  = int(DRIFT * (1.0 - prog))   # 下から上へ
+    elif t > total - FO:
+        prog   = ease_in_out((total - t) / FO)
+        alpha  = int(255 * prog)
+        drift  = -int(DRIFT * (1.0 - prog))  # 上へ流れる
+    else:
+        alpha = 255
+        drift = 0
+
     canvas = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(canvas)
+    draw   = ImageDraw.Draw(canvas)
 
     try:
         font_main = ImageFont.truetype(FONT_MAIN, 68)
@@ -104,24 +130,19 @@ def make_text_layer(text: str, sub: str, w: int, h: int, t: float, total: float)
         font_main = ImageFont.load_default()
         font_sub  = font_main
 
-    # フェードイン / アウト
-    fade_in  = min(t / 1.2, 1.0)
-    fade_out = min((total - t) / 1.0, 1.0)
-    alpha    = int(255 * min(fade_in, fade_out))
+    lines    = text.split("\n")
+    line_h   = 82
+    n_lines  = len(lines)
+    sub_gap  = 16
+    sub_h    = 44
+    block_h  = n_lines * line_h + sub_gap + sub_h
+    margin_b = 60
+    start_y  = h - block_h - margin_b + drift
 
-    lines     = text.split("\n")
-    line_h    = 82
-    n_lines   = len(lines)
-    sub_gap   = 16
-    sub_h     = 44
-    block_h   = n_lines * line_h + sub_gap + sub_h
-    margin_b  = 60
-    start_y   = h - block_h - margin_b
-
-    # 半透明グラデーション帯
+    # 半透明グラデーション帯（ドリフトに追従）
     grad_top = start_y - 30
     band_h   = h - grad_top
-    for dy in range(band_h):
+    for dy in range(max(band_h, 0)):
         ratio = dy / band_h
         a = int(alpha * min(ratio * 2, 1.0) * 0.70)
         draw.rectangle([(0, grad_top + dy), (w, grad_top + dy)], fill=(0, 0, 0, a))
@@ -132,7 +153,6 @@ def make_text_layer(text: str, sub: str, w: int, h: int, t: float, total: float)
         tw   = bbox[2] - bbox[0]
         x    = (w - tw) // 2
         y    = start_y + i * line_h
-        # 影
         draw.text((x + 2, y + 2), line, font=font_main, fill=(0, 0, 0, alpha))
         draw.text((x, y),         line, font=font_main, fill=(255, 248, 230, alpha))
 
