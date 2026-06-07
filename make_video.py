@@ -9,7 +9,7 @@ from moviepy import VideoClip, AudioFileClip
 
 IMAGE_DIR  = "/home/user/kakanonoyaya/images"
 OUTPUT     = "/home/user/kakanonoyaya/kasuga_dining.mp4"
-MUSIC      = "/root/.claude/uploads/a5d067d5-75b4-465a-8b3d-e2d22af93c00/bb1ab356-Paper_Lantern_Waltz.mp3"
+MUSIC      = "/root/.claude/uploads/28a3daed-590d-5329-9d4a-97d354e41fb2/956816aa-A_Quiet_Path_Through_Moss.mp3"
 W, H       = 1920, 1080
 FPS        = 30
 DURATION   = 5.8   # 1枚あたり秒数 (9 × 5.8 - 8 × 1.5 = 40.2s)
