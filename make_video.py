@@ -209,20 +209,26 @@ for s in SLIDES:
 print("クリップを連結中...")
 video = crossfade_concat(raw_frames, DURATION, FADE)
 
-print("音楽を合成中...")
-audio_src = AudioFileClip(MUSIC)
-video_dur = video.duration
-# 音楽が短い場合はループして動画尺に合わせ、末尾2秒でフェードアウト
-if audio_src.duration < video_dur:
+if os.path.exists(MUSIC):
+    print("音楽を合成中...")
     from moviepy import afx
-    audio = audio_src.with_effects([afx.AudioLoop(duration=video_dur)])
+    audio_src = AudioFileClip(MUSIC)
+    video_dur = video.duration
+    if audio_src.duration < video_dur:
+        audio = audio_src.with_effects([afx.AudioLoop(duration=video_dur)])
+    else:
+        audio = audio_src.with_end(video_dur)
+    audio = audio.with_effects([afx.AudioFadeOut(2.0)])
+    video = video.with_audio(audio)
+    has_audio = True
 else:
-    audio = audio_src.with_end(video_dur)
-audio = audio.with_effects([afx.AudioFadeOut(2.0)])
-video = video.with_audio(audio)
+    print("音楽ファイルが見つかりません。映像のみで出力します。")
+    has_audio = False
 
 print(f"動画を出力中: {OUTPUT}  (尺: {video.duration:.1f}秒)")
 video.write_videofile(OUTPUT, fps=FPS, codec="libx264",
-                      audio_codec="aac", preset="medium",
+                      audio=has_audio,
+                      audio_codec="aac" if has_audio else None,
+                      preset="medium",
                       ffmpeg_params=["-crf", "18"])
 print("完了！")
