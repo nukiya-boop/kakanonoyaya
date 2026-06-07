@@ -134,20 +134,19 @@ def make_text_layer(text: str, sub: str, w: int, h: int, t: float, total: float)
     line_h   = 82
     n_lines  = len(lines)
     sub_gap  = 16
-    sub_h    = 44
-    block_h  = n_lines * line_h + sub_gap + sub_h
-    margin_b = 60
-    start_y  = h - block_h - margin_b + drift
+    margin_t = 52           # 上端からの余白
+    start_y  = margin_t + drift
 
-    # 半透明グラデーション帯（ドリフトに追従）
-    grad_top = start_y - 30
-    band_h   = h - grad_top
-    for dy in range(max(band_h, 0)):
-        ratio = dy / band_h
-        a = int(alpha * min(ratio * 2, 1.0) * 0.70)
-        draw.rectangle([(0, grad_top + dy), (w, grad_top + dy)], fill=(0, 0, 0, a))
+    block_bottom = start_y + n_lines * line_h + sub_gap + 44
 
-    # メインテロップ
+    # 半透明グラデーション帯（上から下へ）
+    band_h = block_bottom + 40
+    for dy in range(band_h):
+        ratio = 1.0 - dy / band_h
+        a = int(alpha * min(ratio * 2, 1.0) * 0.68)
+        draw.rectangle([(0, dy), (w, dy)], fill=(0, 0, 0, a))
+
+    # メインテロップ（上部）
     for i, line in enumerate(lines):
         bbox = draw.textbbox((0, 0), line, font=font_main)
         tw   = bbox[2] - bbox[0]
