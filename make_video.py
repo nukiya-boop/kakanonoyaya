@@ -9,6 +9,7 @@ from moviepy import VideoClip, AudioFileClip
 IMAGE_DIR = "/home/user/kakanonoyaya/images"
 OUTPUT    = "/home/user/kakanonoyaya/kasuga_dining.mp4"
 MUSIC     = "/root/.claude/uploads/28a3daed-590d-5329-9d4a-97d354e41fb2/956816aa-A_Quiet_Path_Through_Moss.mp3"
+MUSIC2    = "/root/.claude/uploads/28a3daed-590d-5329-9d4a-97d354e41fb2/101c468c-Linen_and_Leaves.mp3"
 W, H      = 1080, 1920
 FPS       = 30
 DURATION  = 6.2   # 8枚 × 6.2 - 7 × 1.5 = 39.1s
@@ -162,9 +163,42 @@ for s in SLIDES:
 print("動画を組み立て中...")
 video = make_video_clip(raw_frames, DURATION, FADE)
 
-if os.path.exists(MUSIC):
+from moviepy import afx, CompositeAudioClip
+
+# スライド1-4の終わり時刻
+switch_t = 4 * (DURATION - FADE)  # 18.8s
+fade_len = 2.0
+
+has_audio = False
+
+if os.path.exists(MUSIC2):
     print("音楽を合成中...")
-    from moviepy import afx
+    vid_dur = video.duration
+
+    # BGM1: Linen_and_Leaves → スライド1〜4（switch_tでフェードアウト）
+    bgm1 = AudioFileClip(MUSIC2)
+    if bgm1.duration < switch_t + fade_len:
+        bgm1 = bgm1.with_effects([afx.AudioLoop(duration=switch_t + fade_len)])
+    bgm1 = bgm1.with_end(switch_t + fade_len)
+    bgm1 = bgm1.with_effects([afx.AudioFadeOut(fade_len)])
+
+    if os.path.exists(MUSIC):
+        # BGM2: A_Quiet_Path_Through_Moss → スライド5〜8
+        bgm2 = AudioFileClip(MUSIC)
+        bgm2_dur = vid_dur - switch_t
+        if bgm2.duration < bgm2_dur:
+            bgm2 = bgm2.with_effects([afx.AudioLoop(duration=bgm2_dur)])
+        bgm2 = bgm2.with_end(bgm2_dur)
+        bgm2 = bgm2.with_effects([afx.AudioFadeIn(fade_len), afx.AudioFadeOut(2.0)])
+        bgm2 = bgm2.with_start(switch_t)
+        audio = CompositeAudioClip([bgm1, bgm2])
+    else:
+        audio = bgm1
+
+    video = video.with_audio(audio)
+    has_audio = True
+elif os.path.exists(MUSIC):
+    print("音楽を合成中...")
     src = AudioFileClip(MUSIC)
     vid_dur = video.duration
     if src.duration < vid_dur:
