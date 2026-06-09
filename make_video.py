@@ -8,7 +8,7 @@ from moviepy import VideoClip, AudioFileClip
 
 IMAGE_DIR = "/home/user/kakanonoyaya/images"
 OUTPUT    = "/home/user/kakanonoyaya/kasuga_dining.mp4"
-MUSIC     = "/root/.claude/uploads/28a3daed-590d-5329-9d4a-97d354e41fb2/956816aa-A_Quiet_Path_Through_Moss.mp3"
+MUSIC     = "/root/.claude/uploads/28a3daed-590d-5329-9d4a-97d354e41fb2/9113c14d-Tables_for_Two.mp3"
 MUSIC2    = "/root/.claude/uploads/28a3daed-590d-5329-9d4a-97d354e41fb2/101c468c-Linen_and_Leaves.mp3"
 W, H      = 1080, 1920
 FPS       = 30
