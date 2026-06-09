@@ -38,11 +38,11 @@ SLIDES = [
      "text": "森の光とともに\n朝の食卓へ",
      "sub":  ""},
     # ── 夜への転換 ────────────────────────────────────
-    {"file": "7C1A5468.jpg", "night": True,
+    {"file": "7C1A5468.jpg", "night": False,
      "text": "夜になると\n春日の森は静寂に包まれる",
      "sub":  ""},
     # ── 夜の食卓（ディナー前） ────────────────────────
-    {"file": "7C1A5171.jpg", "night": True,
+    {"file": "7C1A5171.jpg", "night": False,
      "text": "窓の外に広がる\n春日の夜",
      "sub":  ""},
     # ── ディナー（元の明るさ） ────────────────────────
@@ -54,7 +54,7 @@ SLIDES = [
      "sub":  ""},
 ]
 
-NIGHT_START = next(i for i, s in enumerate(SLIDES) if s["night"])
+NIGHT_START = None
 
 
 def fit_letterbox(path, w, h, night=False):
@@ -171,16 +171,7 @@ if os.path.exists(MUSIC):
         src = src.with_effects([afx.AudioLoop(duration=vid_dur)])
     else:
         src = src.with_end(vid_dur)
-    night_t  = NIGHT_START * (DURATION - FADE)
-    fade_len = 2.0
-    def vol_curve(t):
-        if t < night_t - fade_len:
-            return 1.0
-        elif t < night_t:
-            return 1.0 - 0.35 * ((t - (night_t - fade_len)) / fade_len)
-        else:
-            return 0.65
-    audio = src.with_effects([afx.MultipliedAudio(vol_curve), afx.AudioFadeOut(2.0)])
+    audio = src.with_effects([afx.AudioFadeOut(2.0)])
     video = video.with_audio(audio)
     has_audio = True
 else:
