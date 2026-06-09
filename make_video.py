@@ -1,6 +1,5 @@
 """
 春日の森を感じながらのお食事 — プロモーション動画
-構成: 森の光 → 窓越しの森 → モーニング → テーブル → 個室 → 夜の森（転換） → ディナー
 """
 import os, unicodedata
 import numpy as np
@@ -12,7 +11,7 @@ OUTPUT    = "/home/user/kakanonoyaya/kasuga_dining.mp4"
 MUSIC     = "/root/.claude/uploads/28a3daed-590d-5329-9d4a-97d354e41fb2/956816aa-A_Quiet_Path_Through_Moss.mp3"
 W, H      = 1080, 1920
 FPS       = 30
-DURATION  = 5.8
+DURATION  = 5.0   # 11枚 × 5.0 - 10 × 1.5 = 40.0s
 FADE      = 1.5
 
 FONT_MAIN = "/usr/share/fonts/truetype/fonts-japanese-gothic.ttf"
@@ -24,24 +23,46 @@ def resolve(name):
     return os.path.join(IMAGE_DIR, _file_map.get(nfc, name))
 
 SLIDES = [
-    {"file": "7C1A4295.jpg",              "night": False,
-     "text": "春日の森に\n朝の光が降り注ぐ",      "sub": "― 千年の社叢が、今日も静かに息づく ―"},
-    {"file": "7C1A5113.jpg",              "night": False,
-     "text": "窓の外に広がる\n千年の緑",            "sub": "― 森を感じながら、特別なひとときへ ―"},
+    # ── 昼・冒頭 ──────────────────────────────────────
+    {"file": "7C1A4295.jpg", "night": False,
+     "text": "春日の森に\n朝の光が降り注ぐ",
+     "sub":  "― 千年の社叢が、今日も静かに息づく ―"},
+    {"file": "7C1A5113.jpg", "night": False,
+     "text": "窓の外に広がる\n千年の緑",
+     "sub":  "― 森を感じながら、特別なひとときへ ―"},
+    # ── モーニング ────────────────────────────────────
     {"file": "イメージ_モーニング集合0001.jpg", "night": False,
-     "text": "森のそばで始まる\n特別な朝食",        "sub": "― 静けさの中に、贅沢なひとときが宿る ―"},
+     "text": "森のそばで始まる\n特別な朝食",
+     "sub":  "― 静けさの中に、贅沢なひとときが宿る ―"},
     {"file": "イメージ_モーニング集合0036.jpg", "night": False,
-     "text": "光あふれる\n朝のひととき",            "sub": "― 旬の恵みを、穏やかな朝に ―"},
-    {"file": "7C1A5111.jpg",              "night": False,
-     "text": "丁寧に整えられた\n食卓",              "sub": "― 器の一つひとつに、職人の心を宿して ―"},
-    {"file": "7C1A5136.jpg",              "night": False,
-     "text": "四季折々の緑を\n眺めながら",          "sub": "― 自然と料理が溶け合う、至福のひととき ―"},
-    {"file": "7C1A4300.jpg",              "night": True,
-     "text": "夜の帳が降りると\n森は別の顔を見せる", "sub": "― 静かな闇の中に、特別な夜が始まる ―"},
-    {"file": "イメージ_ディナー集合0011.jpg",   "night": True,
-     "text": "春日の夜に灯る\n上質なディナー",       "sub": "― 夜の森の静けさが、食卓に奥行きを添える ―"},
-    {"file": "イメージ_ディナー集合0029修.jpg",  "night": True,
-     "text": "特別な夜を、\nここで。",              "sub": "― 春日の森とともに、心に残る一夜を ―"},
+     "text": "光あふれる\n朝のひととき",
+     "sub":  "― 旬の恵みを、穏やかな朝に ―"},
+    # ── 昼の食卓 ─────────────────────────────────────
+    {"file": "7C1A5111.jpg", "night": False,
+     "text": "丁寧に整えられた\n食卓",
+     "sub":  "― 器の一つひとつに、職人の心を宿して ―"},
+    {"file": "7C1A5136.jpg", "night": False,
+     "text": "四季折々の緑を\n眺めながら",
+     "sub":  "― 自然と料理が溶け合う、至福のひととき ―"},
+    # ── 夜への転換 ────────────────────────────────────
+    {"file": "7C1A4300.jpg", "night": True,
+     "text": "夜の帳が降りると\n森は別の顔を見せる",
+     "sub":  "― 静かな闇の中に、特別な夜が始まる ―"},
+    # ── 夜の食卓（ディナー前） ────────────────────────
+    {"file": "7C1A5130.jpg", "night": True,
+     "text": "森に抱かれた\n夜の個室へ",
+     "sub":  "― 窓の向こうに夜の森が広がる ―"},
+    # ── ディナー ─────────────────────────────────────
+    {"file": "イメージ_ディナー集合0011.jpg", "night": True,
+     "text": "春日の夜に灯る\n上質なディナー",
+     "sub":  "― 夜の森の静けさが、食卓に奥行きを添える ―"},
+    {"file": "イメージ_ディナー集合0029修.jpg", "night": True,
+     "text": "記憶に残る\n一夜のコース",
+     "sub":  "― 季節の恵みと職人の技が、夜を彩る ―"},
+    # ── 夜の食卓（ディナー後） ────────────────────────
+    {"file": "7C1A5140.jpg", "night": True,
+     "text": "特別な夜を、\nここで。",
+     "sub":  "― 春日の森とともに、心に残る一夜を ―"},
 ]
 
 NIGHT_START = next(i for i, s in enumerate(SLIDES) if s["night"])
@@ -56,10 +77,10 @@ def fit_letterbox(path, w, h, night=False):
     canvas = Image.new("RGB", (w, h), (0, 0, 0))
     canvas.paste(img, ((w - nw) // 2, (h - nh) // 2))
     if night:
-        canvas = ImageEnhance.Brightness(canvas).enhance(0.52)
-        canvas = ImageEnhance.Color(canvas).enhance(0.75)
+        canvas = ImageEnhance.Brightness(canvas).enhance(0.50)
+        canvas = ImageEnhance.Color(canvas).enhance(0.72)
         r, g, b = canvas.split()
-        b = b.point(lambda x: min(x + 18, 255))
+        b = b.point(lambda x: min(x + 20, 255))
         canvas = Image.merge("RGB", (r, g, b))
     return np.array(canvas)
 
@@ -98,7 +119,7 @@ def make_text_layer(text, sub, w, h, t, total, night=False):
     band_h = block_bottom + 40
     for dy in range(max(band_h, 0)):
         ratio = 1.0 - dy / band_h
-        a = int(alpha * min(ratio * 2, 1.0) * (0.80 if night else 0.68))
+        a = int(alpha * min(ratio * 2, 1.0) * (0.82 if night else 0.68))
         draw.rectangle([(0, dy), (w, dy)], fill=(0, 0, 0, a))
 
     main_color = (220, 240, 255, alpha) if night else (255, 248, 230, alpha)
@@ -161,7 +182,7 @@ if os.path.exists(MUSIC):
         src = src.with_effects([afx.AudioLoop(duration=vid_dur)])
     else:
         src = src.with_end(vid_dur)
-    night_t = NIGHT_START * (DURATION - FADE)
+    night_t  = NIGHT_START * (DURATION - FADE)
     fade_len = 2.0
     def vol_curve(t):
         if t < night_t - fade_len:
